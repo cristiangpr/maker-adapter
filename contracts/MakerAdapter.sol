@@ -25,22 +25,24 @@ contract MakerAdapter {
        
     }
    ///@dev reads the price of the token
-  function getPrice() public view returns (uint) {
-    address ethUsdPriceFeed = 0x729D19f657BD0614b4985Cf1D82531c67569197B;
+   ///@param priceFeed address of relevant Maker DAO price feed 
+   /// address ethUsdPriceFeed = 0x729D19f657BD0614b4985Cf1D82531c67569197B;
+  function getPrice(address priceFeed) internal view returns (uint) {
+    
      return uint(
-      IMakerPriceFeed(ethUsdPriceFeed).read()
+      IMakerPriceFeed(priceFeed).read()
     );
     
   }
-
-    
-    function resolveValue(bytes32 questionId, uint targetValue, uint resolutionTime) external {
+   ///@dev resolves market by getting price from feed, comparing to target value and calling Conditional Tokens reportPayouts
+    ///@param targetValue price to compare to current price
+    function resolveMarket(bytes32 questionId, address priceFeed, uint targetValue, uint resolutionTime) external {
         require(
             block.timestamp >= resolutionTime,
             "Please submit a resolution during the correct time interval"
         );
 
-        uint value = getPrice();
+        uint value = getPrice(priceFeed);
         uint[] memory result = new uint[](2);
         
         if (value > targetValue) {
