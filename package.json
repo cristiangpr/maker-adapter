@@ -1,0 +1,23 @@
+{
+  "name": "maker-adapter",
+  "version": "1.0.0",
+  "description": "Enables prediction markets based on Maker DAO price oracles",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx jest"
+  },
+ 
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  
+  "dependencies": {
+    "@openzeppelin/contracts": "^3.2.0",
+    "@studydefi/money-legos": "^2.1.0",
+    "ethers": "^4.0.47"
+  },
+  "devDependencies": {
+    "ganache-core": "^2.13.1",
+    "jest": "^25.5.2"
+  }
+}
