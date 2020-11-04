@@ -1,4 +1,5 @@
 const { ethers } = require("ethers");
+require('dotenv').config();
 const assert = require('assert');
 const Ganache = require("ganache-core");
 const truffleAssert = require('truffle-assertions');
@@ -8,8 +9,8 @@ const compiledToyToken = require('./build/contracts/ToyToken.json');
 const questionId = "0x0000000000000000000000000000000000000000000000000000000000000001";
 const parentCollectionId = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const priceFeed = "0x729D19f657BD0614b4985Cf1D82531c67569197B"
-const MAINNET_NODE_URL = "https://mainnet.infura.io/v3/b5ab0c2995454d1abe5cbdfe162af992";
-const PRIV_KEY = '0xe8abaa19ef6e8b36ef0a97f308f3a230be7faa53cd8155285794cd09709c6f54';
+const MAINNET_NODE_URL = process.env.MAINNET_NODE_URL;
+const PRIV_KEY = process.env.PRIV_KEY;
 
 const startChain = async () => {
   const ganache = Ganache.provider({
