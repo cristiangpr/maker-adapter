@@ -1,6 +1,6 @@
-# minimal-testing-tutorial
+# maker-adapter
 
-Demonstrates testing off a fork of Mainnet. More details here: https://studydefi.com/testing-on-mainnet/
+Enables prediction markets based on Maker DAO price oracles
 
 ## Setup
 
@@ -8,4 +8,4 @@ After cloning and running `npm install`, you'll need a Mainnet node and a privat
 
 You can get one from Infura or a pseudo-archive node from https://moonnet.now.sh/
 
-Run the tests with `npx jest`.
+Run the tests with `npm test`.
