@@ -1,6 +1,11 @@
 # maker-adapter
 
-Enables prediction markets based on Maker DAO price oracles
+Enables prediction markets based on Maker DAO price oracles. 
+Must be used with Gnosis Conditional Tokens contract.
+When preparing the condition on the CT contract, make sure to set outcome slots to 2. Index sets for short and long outcome collections should be set to 1 and 2 respectively.
+To set up a "all or nothing" binary market set variation to 0 at market preparation.
+To set up a scalar market set variation to define desired range. Upper and lower bounds are defined by targetValue +- variation.
+If price is higher or lower than bounds at resolution time payouts will be all or nothing. If it falls within the range payouts will be proportional.
 
 ## Setup
 
