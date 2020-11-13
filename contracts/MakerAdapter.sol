@@ -2,14 +2,15 @@
 pragma solidity ^0.6.0;
 import { ConditionalTokens } from "./ConditionalTokens.sol";
 import { SafeMath } from "./SafeMath.sol";
-import { CTHelpers } from "./CTHelpers.sol";
+
+
 
 ///@dev interface to read price oracles
 interface IMakerPriceFeed {
   function read() external view returns (bytes32);
 }
-
-//Kovan address 0xAdf49005A69AA892572C7d27b6Dc8C0409cc0E3d
+//kovan ConditionalTokens Address 0xf09F9DD23147E5B4139545Bc9ECf282922ec0a1D
+//kovan address 0xAdf49005A69AA892572C7d27b6Dc8C0409cc0E3d
 contract MakerAdapter {
      using SafeMath for uint256;
      ConditionalTokens public immutable cTokens;
@@ -27,7 +28,7 @@ contract MakerAdapter {
 
     /// @dev Emitted upon the successful reporting of whether the actual value has exceeded target to the conditional tokens contract.
  
-    event ResolutionSuccessful(bytes32 questionId, bytes32 conditionId, uint resolutionTime, uint currentTime, uint value, uint[] result);
+    event ResolutionSuccessful(bytes32 questionId, uint resolutionTime, uint currentTime, uint value, uint[] result);
     
     ///@dev Emitted upon market preparation
   
@@ -36,7 +37,6 @@ contract MakerAdapter {
    
     
     /// @param _cTokens address of conditional tokens contract to be used
-    //Kovan ConditionalTokens Address 0xf09F9DD23147E5B4139545Bc9ECf282922ec0a1D
     constructor (ConditionalTokens _cTokens) public {
         cTokens = _cTokens;
     
@@ -63,7 +63,7 @@ contract MakerAdapter {
     ///@param resolutionTime timestamp of start of valid market resolution window
     ///@param targetValue predicted token price
     ///@param variation  To define a binary market set to 0. To define a scalar market set to desired plus and minus range. Bounds are equal to targetValue +- variation.
-  function prepareMarket(bytes32 questionId,  address makerPriceFeed, uint resolutionTime, uint targetValue, uint variation) external {
+  function prepareMarket(bytes32 questionId,  address makerPriceFeed, uint resolutionTime, uint targetValue, uint variation)  external {
       require(resolutionTime >= block.timestamp,  "Please submit a resolution time in the future");
       cTokens.prepareCondition(address(this), questionId, 2);
       markets[questionId].makerPriceFeed = makerPriceFeed;
@@ -80,9 +80,7 @@ contract MakerAdapter {
    
   function getPrice(address makerPriceFeed) internal view returns (uint) {
     
-       return uint(
-      IMakerPriceFeed(makerPriceFeed).read()
-    );
+       return uint(IMakerPriceFeed(makerPriceFeed).read());
     
   }
     ///@dev resolves market by getting price from feed, comparing to target value and calling Conditional Tokens reportPayouts function with an array of uints representing payout numerators.
@@ -90,11 +88,10 @@ contract MakerAdapter {
   
     function resolveMarket(bytes32 questionId) external {
       require(markets[questionId].resolutionTime <= block.timestamp, "resolution window has not begun");
-      bytes32 conditionId = CTHelpers.getConditionId(address(this), questionId, 2);
+     
       
         ///@param value oracle's response
         uint value = getPrice(markets[questionId].makerPriceFeed);
-       
         uint lowerBound = markets[questionId].targetValue.sub(markets[questionId].variation);
         uint upperBound =  markets[questionId].targetValue.add(markets[questionId].variation);
         uint hundred = 100;
@@ -121,7 +118,7 @@ contract MakerAdapter {
         cTokens.reportPayouts(questionId, result);
         }
         
-        emit ResolutionSuccessful(questionId, conditionId, markets[questionId].resolutionTime, block.timestamp, value, result);
+        emit ResolutionSuccessful(questionId, markets[questionId].resolutionTime, block.timestamp, value, result);
 
     }
   
