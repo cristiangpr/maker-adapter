@@ -1,82 +1,102 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 import { ConditionalTokens } from "./ConditionalTokens.sol";
 import { SafeMath } from "./SafeMath.sol";
+import { CTHelpers } from "./CTHelpers.sol";
 
 ///@dev interface to read price oracles
 interface IMakerPriceFeed {
   function read() external view returns (bytes32);
 }
 
+//Kovan address 0xAdf49005A69AA892572C7d27b6Dc8C0409cc0E3d
 contract MakerAdapter {
      using SafeMath for uint256;
-     ConditionalTokens public cTokens;
-   
-  
+     ConditionalTokens public immutable cTokens;
+      
+      
+    /// Mapping key is a questionId. Value is struct containing market values
+    mapping(bytes32 => Market) public markets;
+     struct  Market {
+        address makerPriceFeed;
+        uint resolutionTime;
+        uint targetValue;
+        uint variation;
+    }
+    
 
     /// @dev Emitted upon the successful reporting of whether the actual value has exceeded target to the conditional tokens contract.
-    /// @param resolutionTime Beginning of time window in which valid reports may be generated. 
-    /// @param currentTime Time at which this oracle made a determination of the value.
-    /// @param value price reported by oracle.
-    /// @param result The array of uints representing the result.
-    event ResolutionSuccessful(uint resolutionTime, uint currentTime, uint value, uint[] result);
+ 
+    event ResolutionSuccessful(bytes32 questionId, bytes32 conditionId, uint resolutionTime, uint currentTime, uint value, uint[] result);
+    
     ///@dev Emitted upon market preparation
+  
     event MarketPrepared(bytes32 conditionId, uint resolutionTime, uint targetValue, uint variation);
     
-      /// Mapping key is a condition ID. Array contains values to be used for market resolution. 
-    mapping(bytes32 => uint[]) public conditionValues;
+   
     
-     /// Mapping key is a condition ID. Value is address of price oracle to be used
-    mapping(bytes32 => address) public conditionPriceFeed;
-    
-    constructor (
-        /// @param address of conditional tokens contract to be used
-        ConditionalTokens _cTokens
-      
-    ) public {
+    /// @param _cTokens address of conditional tokens contract to be used
+    //Kovan ConditionalTokens Address 0xf09F9DD23147E5B4139545Bc9ECf282922ec0a1D
+    constructor (ConditionalTokens _cTokens) public {
         cTokens = _cTokens;
     
        
     }
+ 
     ///@dev Function defines values to be used for market resolution.
-    ///@param conditionId from the conditional tokens contract getConditionId function. For adapter to work outcome slots should be set to 2, index set for short outcome set to 1 and index set for long outcome to 2. 
+    ///@param questionId  bytes32 identifier for the question to be resolved
+    ///@param makerPriceFeed address of token price oracle.
+    /* Available Feeds
+       BALUSD = 0x0C472661dde5B08BEee6a7F8266720ea445830a3
+       BATUSD = 0xAb7366b12C982ca2DE162F35571b4d21E38a16FB
+       BTCUSD = 0xe0F30cb149fAADC7247E953746Be9BbBB6B5751f
+       COMPUSD = 0x18746A1CED49Ff06432400b8EdDcf77876EcA6f8
+       ETHBTC = 0xF60df9B138A00Ae8DBD07F55fd2305CC791e68cc
+       ETHUSD = 0x0E30F0FC91FDbc4594b1e2E5d64E6F1f94cAB23D
+       KNCUSD = 0x4C511ae3FFD63c0DE35D4A138Ff2b584FF450466
+       LINKUSD = 0x7cb395DF9f1534cF528470e2F1AE2D1867d6253f
+       LRCUSD = 0x2aab6aDb9d202e411D2B29a6be1da80F648230f2
+       PAXGUSD = 0xE2E348d6f48E51d194f401bad2840ef164d278e2 (activates soon)
+       USDTUSD = 0x074EcAe0CD5c37f59D9b91E2994407418aCe05B7
+       YFIUSD = 0x67E681d202cf86287Bb088902B89CC66F1A075D4
+       ZRXUSD = 0x1A6b4f516d61c73f568ff0Da15891e670eBc1afb*/
     ///@param resolutionTime timestamp of start of valid market resolution window
-    ///@param priceFeed address of token price oracle. 0x729D19f657BD0614b4985Cf1D82531c67569197B is the address of Maker DAO eth-usd feed. More options will be availabe when contract is whitelisted.
     ///@param targetValue predicted token price
     ///@param variation  To define a binary market set to 0. To define a scalar market set to desired plus and minus range. Bounds are equal to targetValue +- variation.
-  function prepareMarket(bytes32 conditionId, uint resolutionTime, address priceFeed, uint targetValue, uint variation) external {
+  function prepareMarket(bytes32 questionId,  address makerPriceFeed, uint resolutionTime, uint targetValue, uint variation) external {
       require(resolutionTime >= block.timestamp,  "Please submit a resolution time in the future");
-      require(conditionValues[conditionId].length == 0, "market already prepared");
-      conditionPriceFeed[conditionId] = priceFeed;
-      conditionValues[conditionId] = new uint[](3);
-      conditionValues[conditionId][0] = targetValue;
-      conditionValues[conditionId][1] = variation;
-      conditionValues[conditionId][2] = resolutionTime;
+      cTokens.prepareCondition(address(this), questionId, 2);
+      markets[questionId].makerPriceFeed = makerPriceFeed;
+      markets[questionId].resolutionTime = resolutionTime;
+      markets[questionId].targetValue = targetValue;
+      markets[questionId].variation = variation;
       
       
-       emit MarketPrepared(conditionId, resolutionTime, targetValue, variation);
+      
+       emit MarketPrepared(questionId, resolutionTime, targetValue, variation);
   }
    ///@dev reads the price of the token
-   //@param priceFeed address of relevant Maker DAO price feed. Defined at market preparation. 
+   ///@param makerPriceFeed address of relevant Maker DAO price feed. Defined at market preparation. 
    
-  function getPrice(address priceFeed) internal view returns (uint) {
+  function getPrice(address makerPriceFeed) internal view returns (uint) {
     
        return uint(
-      IMakerPriceFeed(priceFeed).read()
+      IMakerPriceFeed(makerPriceFeed).read()
     );
     
   }
     ///@dev resolves market by getting price from feed, comparing to target value and calling Conditional Tokens reportPayouts function with an array of uints representing payout numerators.
-    ///@param questionId used in conditional tokens condition preparation
-    ///@param conditionId from the conditional tokens contract getConditionId function
-    function resolveMarket(bytes32 questionId, bytes32 conditionId) external {
-      require(conditionValues[conditionId][2] <= block.timestamp, "resolution window has not begun");
+    ///@param questionId used in market preparation
+  
+    function resolveMarket(bytes32 questionId) external {
+      require(markets[questionId].resolutionTime <= block.timestamp, "resolution window has not begun");
+      bytes32 conditionId = CTHelpers.getConditionId(address(this), questionId, 2);
       
         ///@param value oracle's response
-        uint value = getPrice(conditionPriceFeed[conditionId]);
-        uint targetValue = conditionValues[conditionId][0];
-        uint variation = conditionValues[conditionId][1];
-        uint lowerBound = targetValue.sub(variation);
-        uint upperBound = targetValue.add(variation);
+        uint value = getPrice(markets[questionId].makerPriceFeed);
+       
+        uint lowerBound = markets[questionId].targetValue.sub(markets[questionId].variation);
+        uint upperBound =  markets[questionId].targetValue.add(markets[questionId].variation);
         uint hundred = 100;
         uint[] memory result = new uint[](2);
         /// if value is lower than lower bound pays 100% to short position and 0 to long.
@@ -93,15 +113,15 @@ contract MakerAdapter {
         } 
         /// Finds where in the range defined by upper and lower bounds the price value falls and determines proportional payouts.
           else  {
-            uint a = value.sub(lowerBound).mul(hundred);
-            uint b = upperBound.sub(lowerBound);
-            uint c = a.div(b);
-            result[0] = hundred.sub(c);
-            result[1] = c;
+            uint ratio = value.sub(lowerBound).mul(hundred);
+            uint range = upperBound.sub(lowerBound);
+            uint longPayout = ratio.div(range);
+            result[0] = hundred.sub(longPayout);
+            result[1] = longPayout;
         cTokens.reportPayouts(questionId, result);
         }
         
-        emit ResolutionSuccessful(conditionValues[conditionId][2], block.timestamp, value, result);
+        emit ResolutionSuccessful(questionId, conditionId, markets[questionId].resolutionTime, block.timestamp, value, result);
 
     }
   

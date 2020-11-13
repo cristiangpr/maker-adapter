@@ -65,8 +65,20 @@ jest.setTimeout(100000)
    
 
 
-   conditionId = await cTokens.getConditionId(mkAdapter.address, questionId, 2 )
-   await cTokens.prepareCondition(mkAdapter.address, questionId, 2 );
+   conditionId = await cTokens.getConditionId(mkAdapter.address, questionId, 2 );
+   let blockNumber = await provider.getBlockNumber();
+   let block = await provider.getBlock(blockNumber);
+    
+    await mkAdapter.prepareMarket(
+      questionId,
+      priceFeed,
+      block.timestamp + 15,
+      //target price
+    "450000000000000000000",
+    // variation
+    '0'
+   
+   );
    low =  await cTokens.getCollectionId(parentCollectionId, conditionId, 1);
    high =  await cTokens.getCollectionId(parentCollectionId, conditionId, 2);
    t1Low = await cTokens.getPositionId(toyToken.address, low);
@@ -104,14 +116,18 @@ describe("contract deployment",  () => {
 
 describe("Maker Dao adapter",  () => {
  
- 
+  test('reverts if resolution is attempted before start of valid window', async () => {
+    await truffleAssert.reverts(mkAdapter.resolveMarket(
+      questionId), "resolution window has not begun"
+    )
+     });
 
   test('reverts on invalid resolution time', async () => {
     await truffleAssert.reverts(
        mkAdapter.prepareMarket(
-        conditionId,
-        "1604364260",
+        questionId,
         priceFeed,
+        "1604364260",
         //target price
       "450000000000000000000",
       // variation
@@ -121,43 +137,25 @@ describe("Maker Dao adapter",  () => {
        });
 
   test('prepares market', async () => {
-    let blockNumber = await provider.getBlockNumber();
-      let block = await provider.getBlock(blockNumber);
     
-    await mkAdapter.prepareMarket(
-      conditionId,
-      block.timestamp + 7,
-      priceFeed,
-      //target price
-    "450000000000000000000",
-    // variation
-    '0'
-   
-   );
-   const targetValue = await mkAdapter.conditionValues(conditionId,"0");
-   
-   expect(targetValue.toString()).toEqual("450000000000000000000");
+   const market = await mkAdapter.markets(questionId);
+   expect(market.targetValue.toString()).toEqual("450000000000000000000");
    
      });
 
-      test('reverts if resolution is attempted before start of valid window', async () => {
-    await truffleAssert.reverts(mkAdapter.resolveMarket(
-      questionId,
-      conditionId), "resolution window has not begun"
-    )
-     });
+  
 
      test('reverts if market is already prepared', async () => {
   
       await truffleAssert.reverts( mkAdapter.prepareMarket(
-        conditionId,
-        "1704364260",
+        questionId,
         priceFeed,
+        "1704364260",
         //target price
       "450000000000000000000",
       // variation
       '50000000000000000000'),
-      "market already prepared"
+      "condition already prepared"
       )
        });   
        
@@ -173,9 +171,7 @@ describe("Maker Dao adapter",  () => {
         });
       } 
         await sleep(10000)
-        await  mkAdapter.resolveMarket(
-          questionId,
-          conditionId);
+        await  mkAdapter.resolveMarket(questionId);
     
      
         await cTokens.redeemPositions(
@@ -196,8 +192,20 @@ describe("Maker Dao adapter",  () => {
        });
 
        test('resolves scalar market', async () => {
-        conditionId2 = await cTokens.getConditionId(mkAdapter.address, questionId2, 2 )
-        await cTokens.prepareCondition(mkAdapter.address, questionId2, 2 );
+        conditionId2 = await cTokens.getConditionId(mkAdapter.address, questionId2, 2 );
+        let blockNumber = await provider.getBlockNumber();
+        let block = await provider.getBlock(blockNumber);
+        await mkAdapter.prepareMarket(
+          questionId2,
+          priceFeed,
+          block.timestamp + 7,
+         
+          //target price
+        "450000000000000000000",
+        // variation
+        '100000000000000000000'
+       
+       );
         short =  await cTokens.getCollectionId(parentCollectionId, conditionId2, 1);
         long =  await cTokens.getCollectionId(parentCollectionId, conditionId2, 2);
         t1Short = await cTokens.getPositionId(toyToken.address, short);
@@ -212,18 +220,7 @@ describe("Maker Dao adapter",  () => {
           1000
           );
           
-        let blockNumber = await provider.getBlockNumber();
-        let block = await provider.getBlock(blockNumber);
-        await mkAdapter.prepareMarket(
-          conditionId2,
-          block.timestamp + 7,
-          priceFeed,
-          //target price
-        "450000000000000000000",
-        // variation
-        '100000000000000000000'
-       
-       );
+     
       
         const sleep = (ms) => {
           return new Promise((resolve) => {
@@ -231,9 +228,7 @@ describe("Maker Dao adapter",  () => {
           });
         } 
        await sleep(10000)
-       await  mkAdapter.resolveMarket(
-          questionId2,
-          conditionId2);
+       await  mkAdapter.resolveMarket(questionId2);
       
        
           await cTokens.redeemPositions(
