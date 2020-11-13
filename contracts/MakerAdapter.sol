@@ -31,7 +31,7 @@ contract MakerAdapter {
     
     ///@dev Emitted upon market preparation
   
-    event MarketPrepared(bytes32 conditionId, uint resolutionTime, uint targetValue, uint variation);
+    event MarketPrepared(bytes32 questionId, uint resolutionTime, uint targetValue, uint variation);
     
    
     
