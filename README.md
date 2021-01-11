@@ -8,5 +8,6 @@ To set up a scalar market set variation to define desired range. Upper and lower
 If price is higher or lower than bounds at resolution time payouts will be all or nothing. If it falls within the range payouts will be proportional.
 
 
-Interact with contract on Etherscan https://etherscan.io/address/0xD5885fbCb9a8a8244746010a3BC6F1C6e0269777
+Interact with contract on Etherscan https://etherscan.io/address/0xD5885fbCb9a8a8244746010a3BC6F1C6e0269777.
+
 Curently whitelisted on ETH/USD OSM 0x81FE72B5A8d1A857d176C3E7d5Bd2679A9B85763. More coming soon.
